@@ -1,0 +1,6 @@
+{
+  "name": "Honest Bot Pro",
+  "description": "WhatsApp Business Cloud API & OpenAI live-search bot command center by Honest Tech Support (+263 780549558) with encrypted account linking, .play media downloads, owner super-admin governance, and engagement analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,370 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- HARDENED HELPER PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION HELPERS ---
+
+    function isValidOwnerPolicy(data, userId) {
+      return data.ownerUid == userId &&
+             data.globalFleetState in ['ONLINE', 'VIP_LOCKDOWN', 'MAINTENANCE', 'PAUSED_ALL'] &&
+             data.maintenanceMessage is string && data.maintenanceMessage.size() <= 300 &&
+             data.allowNewLinkRequests is bool &&
+             data.defaultDailyQuota is int && data.defaultDailyQuota >= 1 && data.defaultDailyQuota <= 100000 &&
+             data.maxMediaSizeMb is int && data.maxMediaSizeMb >= 1 && data.maxMediaSizeMb <= 100 &&
+             (!('botName' in data) || (data.botName is string && data.botName.size() <= 64)) &&
+             (!('commandPrefix' in data) || (data.commandPrefix is string && data.commandPrefix.size() >= 1 && data.commandPrefix.size() <= 4)) &&
+             (!('botMode' in data) || data.botMode in ['public', 'private', 'inbox', 'groups']) &&
+             (!('webPairBridgeUrl' in data) || (data.webPairBridgeUrl is string && data.webPairBridgeUrl.size() <= 500)) &&
+             (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 500)) &&
+             (!('readMessages' in data) || data.readMessages is bool) &&
+             (!('alwaysOnline' in data) || data.alwaysOnline is bool) &&
+             (!('autoTyping' in data) || data.autoTyping in ['off', 'all', 'inbox', 'group']) &&
+             (!('autoRecording' in data) || data.autoRecording in ['off', 'all', 'inbox', 'group']) &&
+             (!('autoReact' in data) || data.autoReact is bool) &&
+             (!('ownerReact' in data) || data.ownerReact is bool) &&
+             (!('autoViewStatus' in data) || data.autoViewStatus is bool) &&
+             (!('autoLikeStatus' in data) || data.autoLikeStatus is bool) &&
+             (!('autoDownloader' in data) || data.autoDownloader is bool) &&
+             (!('antiLinkMode' in data) || data.antiLinkMode in ['off', 'warn', 'delete']) &&
+             (!('antiDeletePath' in data) || data.antiDeletePath in ['off', 'inbox', 'group', 'all']) &&
+             (!('antiEditPath' in data) || data.antiEditPath in ['off', 'inbox', 'group', 'all']) &&
+             (!('antiCallEnabled' in data) || data.antiCallEnabled is bool) &&
+             (!('callRejectMessage' in data) || (data.callRejectMessage is string && data.callRejectMessage.size() <= 300)) &&
+             (!('antiStatusEnabled' in data) || data.antiStatusEnabled is bool) &&
+             (!('welcomeEnabled' in data) || data.welcomeEnabled is bool) &&
+             (!('goodbyeEnabled' in data) || data.goodbyeEnabled is bool) &&
+             (!('welcomeMessage' in data) || (data.welcomeMessage is string && data.welcomeMessage.size() <= 400)) &&
+             (!('goodbyeMessage' in data) || (data.goodbyeMessage is string && data.goodbyeMessage.size() <= 400)) &&
+             (!('sudoNumbers' in data) || (data.sudoNumbers is list && data.sudoNumbers.size() <= 50 && (data.sudoNumbers.size() == 0 || data.sudoNumbers[0] is string))) &&
+             (!('bannedNumbers' in data) || (data.bannedNumbers is list && data.bannedNumbers.size() <= 100 && (data.bannedNumbers.size() == 0 || data.bannedNumbers[0] is string))) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidConnectedAccount(data, userId) {
+      return data.ownerUid == userId &&
+             data.targetType in ['PERSONAL_INBOX', 'GROUP_TARGET'] &&
+             data.countryCode is string && data.countryCode.size() >= 1 && data.countryCode.size() <= 8 &&
+             data.phoneNumber is string && data.phoneNumber.size() >= 4 && data.phoneNumber.size() <= 64 &&
+             data.e164Number is string && data.e164Number.size() >= 5 && data.e164Number.size() <= 80 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.pairingCode is string && data.pairingCode.size() >= 4 && data.pairingCode.size() <= 24 &&
+             data.sessionFingerprint is string && data.sessionFingerprint.size() >= 8 && data.sessionFingerprint.size() <= 128 &&
+             data.pairingExpiresAtMs is int && data.pairingExpiresAtMs >= 0 &&
+             data.connectionStatus in ['LIVE', 'AWAITING_CODE', 'PAUSED', 'SUSPENDED', 'REVOKED'] &&
+             data.operatingMode in ['FULL_AI_MEDIA', 'COMMANDS_ONLY', 'VIP_CONCIERGE', 'MONITOR_ONLY'] &&
+             data.customPhoneNumberId is string && data.customPhoneNumberId.size() <= 64 &&
+             data.role in ['VIP', 'STANDARD', 'RESTRICTED', 'SUSPENDED', 'BANNED'] &&
+             data.botEnabled is bool &&
+             data.autoReplyEnabled is bool &&
+             data.mediaDownloadEnabled is bool &&
+             data.webSearchEnabled is bool &&
+             data.groupDispatchEnabled is bool &&
+             data.blockedCommands is list && data.blockedCommands.size() <= 25 &&
+             (data.blockedCommands.size() == 0 || data.blockedCommands[0] is string) &&
+             data.dailyQuota is int && data.dailyQuota >= 0 && data.dailyQuota <= 100000 &&
+             data.messagesUsedToday is int && data.messagesUsedToday >= 0 && data.messagesUsedToday <= 100000 &&
+             data.lastActiveAtMs is int && data.lastActiveAtMs >= 0 &&
+             (!('linkingMethod' in data) || data.linkingMethod in ['CLOUD_API', 'WEB_PAIR', 'LOCAL_VAULT']) &&
+             (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 500)) &&
+             (!('antiLinkEnabled' in data) || data.antiLinkEnabled is bool) &&
+             (!('antiDeleteEnabled' in data) || data.antiDeleteEnabled is bool) &&
+             (!('welcomeEnabled' in data) || data.welcomeEnabled is bool) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBotCommand(data, userId) {
+      return data.ownerUid == userId &&
+             data.trigger is string && data.trigger.size() >= 2 && data.trigger.size() <= 32 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+             data.description is string && data.description.size() <= 240 &&
+             data.category in ['MEDIA_AUDIO', 'MEDIA_VIDEO', 'INTERNET', 'SOCIAL', 'SHARE', 'BUSINESS', 'AUTOMATION', 'UTILITY'] &&
+             data.promptTemplate is string && data.promptTemplate.size() <= 1000 &&
+             data.usesWebSearch is bool &&
+             data.commandEnabled is bool &&
+             data.executionCount is int && data.executionCount >= 0 &&
+             (!('aliases' in data) || (data.aliases is list && data.aliases.size() <= 15 && (data.aliases.size() == 0 || data.aliases[0] is string))) &&
+             (!('ownerOnly' in data) || data.ownerOnly is bool) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidMediaJob(data, userId) {
+      return data.ownerUid == userId &&
+             data.accountId is string && data.accountId.size() >= 1 && data.accountId.size() <= 128 &&
+             data.targetLabel is string && data.targetLabel.size() >= 1 && data.targetLabel.size() <= 120 &&
+             data.targetType in ['PERSONAL_INBOX', 'GROUP_TARGET'] &&
+             data.commandTrigger is string && data.commandTrigger.size() >= 1 && data.commandTrigger.size() <= 120 &&
+             data.query is string && data.query.size() >= 1 && data.query.size() <= 300 &&
+             data.sourcePlatform in ['YOUTUBE', 'TIKTOK', 'INSTAGRAM', 'FACEBOOK', 'X', 'SOUNDCLOUD', 'WEB'] &&
+             data.mediaType in ['AUDIO', 'VIDEO', 'DOCUMENT'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.sourceUrl is string && data.sourceUrl.size() <= 1000 &&
+             data.localCachePath is string && data.localCachePath.size() <= 500 &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             data.whatsappMediaId is string && data.whatsappMediaId.size() <= 200 &&
+             data.status in ['SEARCHING', 'DOWNLOADING', 'UPLOADING', 'DELIVERED', 'FAILED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidPlatformIntegration(data, userId) {
+      return data.ownerUid == userId &&
+             data.platformKey in ['WHATSAPP_CLOUD', 'WEBPAIR_BRIDGE', 'INSTAGRAM_FB', 'X_YOUTUBE', 'MEDIA_EXTRACTOR', 'CRM_WEBHOOK'] &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.status in ['CONNECTED', 'CONFIGURED', 'NEEDS_KEYS', 'PAUSED'] &&
+             data.endpointOrHandle is string && data.endpointOrHandle.size() <= 500 &&
+             data.autoSyncEnabled is bool &&
+             data.webhookSecretHash is string && data.webhookSecretHash.size() <= 128 &&
+             data.lastHeartbeatAtMs is int && data.lastHeartbeatAtMs >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidEngagementEvent(data, userId) {
+      return data.ownerUid == userId &&
+             data.accountId is string && data.accountId.size() <= 128 &&
+             data.e164Number is string && data.e164Number.size() <= 80 &&
+             data.commandTrigger is string && data.commandTrigger.size() >= 1 && data.commandTrigger.size() <= 64 &&
+             data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 64 &&
+             data.promptPreview is string && data.promptPreview.size() <= 300 &&
+             data.responsePreview is string && data.responsePreview.size() <= 500 &&
+             data.latencyMs is int && data.latencyMs >= 0 && data.latencyMs <= 300000 &&
+             data.status in ['DELIVERED', 'PROCESSED', 'BLOCKED', 'FAILED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidAdminAuditLog(data, userId) {
+      return data.ownerUid == userId &&
+             data.actionType is string && data.actionType.size() >= 2 && data.actionType.size() <= 48 &&
+             data.targetAccountId is string && data.targetAccountId.size() <= 128 &&
+             data.targetLabel is string && data.targetLabel.size() <= 120 &&
+             data.details is string && data.details.size() >= 1 && data.details.size() <= 400 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // --- OWNER-SCOPED COLLECTIONS ---
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /settings/{settingId} {
+        allow get: if isOwner(userId) && isValidId(settingId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(settingId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'globalFleetState', 'maintenanceMessage',
+                           'allowNewLinkRequests', 'defaultDailyQuota', 'maxMediaSizeMb',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'globalFleetState', 'maintenanceMessage',
+                           'allowNewLinkRequests', 'defaultDailyQuota', 'maxMediaSizeMb',
+                           'botName', 'commandPrefix', 'botMode', 'webPairBridgeUrl', 'sessionId',
+                           'readMessages', 'alwaysOnline', 'autoTyping', 'autoRecording',
+                           'autoReact', 'ownerReact', 'autoViewStatus', 'autoLikeStatus', 'autoDownloader',
+                           'antiLinkMode', 'antiDeletePath', 'antiEditPath', 'antiCallEnabled',
+                           'callRejectMessage', 'antiStatusEnabled', 'welcomeEnabled', 'goodbyeEnabled',
+                           'welcomeMessage', 'goodbyeMessage', 'sudoNumbers', 'bannedNumbers',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidOwnerPolicy(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(settingId) &&
+                         isValidOwnerPolicy(incoming(), userId) &&
+                         incoming().ownerUid == existing().ownerUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'globalFleetState', 'maintenanceMessage', 'allowNewLinkRequests',
+                           'defaultDailyQuota', 'maxMediaSizeMb',
+                           'botName', 'commandPrefix', 'botMode', 'webPairBridgeUrl', 'sessionId',
+                           'readMessages', 'alwaysOnline', 'autoTyping', 'autoRecording',
+                           'autoReact', 'ownerReact', 'autoViewStatus', 'autoLikeStatus', 'autoDownloader',
+                           'antiLinkMode', 'antiDeletePath', 'antiEditPath', 'antiCallEnabled',
+                           'callRejectMessage', 'antiStatusEnabled', 'welcomeEnabled', 'goodbyeEnabled',
+                           'welcomeMessage', 'goodbyeMessage', 'sudoNumbers', 'bannedNumbers',
+                           'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(settingId);
+      }
+
+      match /accounts/{accountId} {
+        allow get: if isOwner(userId) && isValidId(accountId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(accountId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'targetType', 'countryCode', 'phoneNumber', 'e164Number',
+                           'displayName', 'pairingCode', 'sessionFingerprint', 'pairingExpiresAtMs',
+                           'connectionStatus', 'operatingMode', 'customPhoneNumberId', 'role',
+                           'botEnabled', 'autoReplyEnabled', 'mediaDownloadEnabled',
+                           'webSearchEnabled', 'groupDispatchEnabled', 'blockedCommands',
+                           'dailyQuota', 'messagesUsedToday', 'lastActiveAtMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'targetType', 'countryCode', 'phoneNumber', 'e164Number',
+                           'displayName', 'pairingCode', 'sessionFingerprint', 'pairingExpiresAtMs',
+                           'connectionStatus', 'operatingMode', 'customPhoneNumberId', 'role',
+                           'botEnabled', 'autoReplyEnabled', 'mediaDownloadEnabled',
+                           'webSearchEnabled', 'groupDispatchEnabled', 'blockedCommands',
+                           'dailyQuota', 'messagesUsedToday', 'lastActiveAtMs',
+                           'linkingMethod', 'sessionId', 'antiLinkEnabled', 'antiDeleteEnabled', 'welcomeEnabled',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidConnectedAccount(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(accountId) &&
+                         isValidConnectedAccount(incoming(), userId) &&
+                         incoming().ownerUid == existing().ownerUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'targetType', 'countryCode', 'phoneNumber', 'e164Number',
+                           'displayName', 'pairingCode', 'sessionFingerprint', 'pairingExpiresAtMs',
+                           'connectionStatus', 'operatingMode', 'customPhoneNumberId', 'role',
+                           'botEnabled', 'autoReplyEnabled', 'mediaDownloadEnabled',
+                           'webSearchEnabled', 'groupDispatchEnabled', 'blockedCommands',
+                           'dailyQuota', 'messagesUsedToday', 'lastActiveAtMs',
+                           'linkingMethod', 'sessionId', 'antiLinkEnabled', 'antiDeleteEnabled', 'welcomeEnabled',
+                           'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(accountId);
+      }
+
+      match /commands/{commandId} {
+        allow get: if isOwner(userId) && isValidId(commandId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(commandId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'trigger', 'title', 'description', 'category',
+                           'promptTemplate', 'usesWebSearch', 'commandEnabled',
+                           'executionCount', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'trigger', 'title', 'description', 'category',
+                           'promptTemplate', 'usesWebSearch', 'commandEnabled',
+                           'executionCount', 'aliases', 'ownerOnly', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidBotCommand(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(commandId) &&
+                         isValidBotCommand(incoming(), userId) &&
+                         incoming().ownerUid == existing().ownerUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'trigger', 'title', 'description', 'category',
+                           'promptTemplate', 'usesWebSearch', 'commandEnabled',
+                           'executionCount', 'aliases', 'ownerOnly', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(commandId);
+      }
+
+      match /mediaJobs/{jobId} {
+        allow get: if isOwner(userId) && isValidId(jobId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(jobId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'accountId', 'targetLabel', 'targetType', 'commandTrigger',
+                           'query', 'sourcePlatform', 'mediaType', 'title', 'sourceUrl',
+                           'localCachePath', 'fileSizeBytes', 'whatsappMediaId', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'accountId', 'targetLabel', 'targetType', 'commandTrigger',
+                           'query', 'sourcePlatform', 'mediaType', 'title', 'sourceUrl',
+                           'localCachePath', 'fileSizeBytes', 'whatsappMediaId', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidMediaJob(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(jobId) &&
+                         isValidMediaJob(incoming(), userId) &&
+                         incoming().ownerUid == existing().ownerUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'localCachePath', 'fileSizeBytes', 'whatsappMediaId', 'status', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(jobId);
+      }
+
+      match /platforms/{platformId} {
+        allow get: if isOwner(userId) && isValidId(platformId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(platformId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'platformKey', 'name', 'status', 'endpointOrHandle',
+                           'autoSyncEnabled', 'webhookSecretHash', 'lastHeartbeatAtMs',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'platformKey', 'name', 'status', 'endpointOrHandle',
+                           'autoSyncEnabled', 'webhookSecretHash', 'lastHeartbeatAtMs',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidPlatformIntegration(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(platformId) &&
+                         isValidPlatformIntegration(incoming(), userId) &&
+                         incoming().ownerUid == existing().ownerUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'status', 'endpointOrHandle', 'autoSyncEnabled',
+                           'webhookSecretHash', 'lastHeartbeatAtMs', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(platformId);
+      }
+
+      match /events/{eventId} {
+        allow get: if isOwner(userId) && isValidId(eventId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(eventId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'accountId', 'e164Number', 'commandTrigger', 'platform',
+                           'promptPreview', 'responsePreview', 'latencyMs', 'status', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'accountId', 'e164Number', 'commandTrigger', 'platform',
+                           'promptPreview', 'responsePreview', 'latencyMs', 'status', 'createdAt'
+                         ]) &&
+                         isValidEngagementEvent(incoming(), userId);
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(eventId);
+      }
+
+      match /auditLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(logId) &&
+                         incoming().keys().hasAll([
+                           'ownerUid', 'actionType', 'targetAccountId', 'targetLabel', 'details', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'ownerUid', 'actionType', 'targetAccountId', 'targetLabel', 'details', 'createdAt'
+                         ]) &&
+                         isValidAdminAuditLog(incoming(), userId);
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+  }
+}

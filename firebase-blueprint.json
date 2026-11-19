@@ -1,0 +1,300 @@
+{
+  "entities": {
+    "OwnerPolicy": {
+      "title": "OwnerPolicy",
+      "description": "Global super-admin fleet policy, bot automation settings, and operating controls for the authenticated owner.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "globalFleetState": { "type": "string", "enum": ["ONLINE", "VIP_LOCKDOWN", "MAINTENANCE", "PAUSED_ALL"] },
+        "maintenanceMessage": { "type": "string" },
+        "allowNewLinkRequests": { "type": "boolean" },
+        "defaultDailyQuota": { "type": "integer" },
+        "maxMediaSizeMb": { "type": "integer" },
+        "botName": { "type": "string" },
+        "commandPrefix": { "type": "string" },
+        "botMode": { "type": "string", "enum": ["public", "private", "inbox", "groups"] },
+        "webPairBridgeUrl": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "readMessages": { "type": "boolean" },
+        "alwaysOnline": { "type": "boolean" },
+        "autoTyping": { "type": "string", "enum": ["off", "all", "inbox", "group"] },
+        "autoRecording": { "type": "string", "enum": ["off", "all", "inbox", "group"] },
+        "autoReact": { "type": "boolean" },
+        "ownerReact": { "type": "boolean" },
+        "autoViewStatus": { "type": "boolean" },
+        "autoLikeStatus": { "type": "boolean" },
+        "autoDownloader": { "type": "boolean" },
+        "antiLinkMode": { "type": "string", "enum": ["off", "warn", "delete"] },
+        "antiDeletePath": { "type": "string", "enum": ["off", "inbox", "group", "all"] },
+        "antiEditPath": { "type": "string", "enum": ["off", "inbox", "group", "all"] },
+        "antiCallEnabled": { "type": "boolean" },
+        "callRejectMessage": { "type": "string" },
+        "antiStatusEnabled": { "type": "boolean" },
+        "welcomeEnabled": { "type": "boolean" },
+        "goodbyeEnabled": { "type": "boolean" },
+        "welcomeMessage": { "type": "string" },
+        "goodbyeMessage": { "type": "string" },
+        "sudoNumbers": { "type": "array" },
+        "bannedNumbers": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "globalFleetState",
+        "maintenanceMessage",
+        "allowNewLinkRequests",
+        "defaultDailyQuota",
+        "maxMediaSizeMb",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ConnectedAccount": {
+      "title": "ConnectedAccount",
+      "description": "Linked WhatsApp personal inbox or group target with pairing code, WebPair session ID, and owner admin permissions.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["PERSONAL_INBOX", "GROUP_TARGET"] },
+        "countryCode": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "e164Number": { "type": "string" },
+        "displayName": { "type": "string" },
+        "pairingCode": { "type": "string" },
+        "sessionFingerprint": { "type": "string" },
+        "pairingExpiresAtMs": { "type": "integer" },
+        "connectionStatus": { "type": "string", "enum": ["LIVE", "AWAITING_CODE", "PAUSED", "SUSPENDED", "REVOKED"] },
+        "operatingMode": { "type": "string", "enum": ["FULL_AI_MEDIA", "COMMANDS_ONLY", "VIP_CONCIERGE", "MONITOR_ONLY"] },
+        "customPhoneNumberId": { "type": "string" },
+        "role": { "type": "string", "enum": ["VIP", "STANDARD", "RESTRICTED", "SUSPENDED", "BANNED"] },
+        "botEnabled": { "type": "boolean" },
+        "autoReplyEnabled": { "type": "boolean" },
+        "mediaDownloadEnabled": { "type": "boolean" },
+        "webSearchEnabled": { "type": "boolean" },
+        "groupDispatchEnabled": { "type": "boolean" },
+        "blockedCommands": { "type": "array" },
+        "dailyQuota": { "type": "integer" },
+        "messagesUsedToday": { "type": "integer" },
+        "lastActiveAtMs": { "type": "integer" },
+        "linkingMethod": { "type": "string", "enum": ["CLOUD_API", "WEB_PAIR", "LOCAL_VAULT"] },
+        "sessionId": { "type": "string" },
+        "antiLinkEnabled": { "type": "boolean" },
+        "antiDeleteEnabled": { "type": "boolean" },
+        "welcomeEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "targetType",
+        "countryCode",
+        "phoneNumber",
+        "e164Number",
+        "displayName",
+        "pairingCode",
+        "sessionFingerprint",
+        "pairingExpiresAtMs",
+        "connectionStatus",
+        "operatingMode",
+        "customPhoneNumberId",
+        "role",
+        "botEnabled",
+        "autoReplyEnabled",
+        "mediaDownloadEnabled",
+        "webSearchEnabled",
+        "groupDispatchEnabled",
+        "blockedCommands",
+        "dailyQuota",
+        "messagesUsedToday",
+        "lastActiveAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BotCommand": {
+      "title": "BotCommand",
+      "description": "Registered dot or slash command executed by Honest Bot Pro behind linked accounts.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "trigger": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["MEDIA_AUDIO", "MEDIA_VIDEO", "INTERNET", "SOCIAL", "SHARE", "BUSINESS", "AUTOMATION", "UTILITY"] },
+        "promptTemplate": { "type": "string" },
+        "usesWebSearch": { "type": "boolean" },
+        "commandEnabled": { "type": "boolean" },
+        "executionCount": { "type": "integer" },
+        "aliases": { "type": "array" },
+        "ownerOnly": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "trigger",
+        "title",
+        "description",
+        "category",
+        "promptTemplate",
+        "usesWebSearch",
+        "commandEnabled",
+        "executionCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MediaJob": {
+      "title": "MediaJob",
+      "description": "Music and video download plus WhatsApp Cloud API media upload job.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "accountId": { "type": "string" },
+        "targetLabel": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["PERSONAL_INBOX", "GROUP_TARGET"] },
+        "commandTrigger": { "type": "string" },
+        "query": { "type": "string" },
+        "sourcePlatform": { "type": "string", "enum": ["YOUTUBE", "TIKTOK", "INSTAGRAM", "FACEBOOK", "X", "SOUNDCLOUD", "WEB"] },
+        "mediaType": { "type": "string", "enum": ["AUDIO", "VIDEO", "DOCUMENT"] },
+        "title": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "localCachePath": { "type": "string" },
+        "fileSizeBytes": { "type": "integer" },
+        "whatsappMediaId": { "type": "string" },
+        "status": { "type": "string", "enum": ["SEARCHING", "DOWNLOADING", "UPLOADING", "DELIVERED", "FAILED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "accountId",
+        "targetLabel",
+        "targetType",
+        "commandTrigger",
+        "query",
+        "sourcePlatform",
+        "mediaType",
+        "title",
+        "sourceUrl",
+        "localCachePath",
+        "fileSizeBytes",
+        "whatsappMediaId",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PlatformIntegration": {
+      "title": "PlatformIntegration",
+      "description": "Configured business operating platform or social channel connector.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "platformKey": { "type": "string", "enum": ["WHATSAPP_CLOUD", "WEBPAIR_BRIDGE", "INSTAGRAM_FB", "X_YOUTUBE", "MEDIA_EXTRACTOR", "CRM_WEBHOOK"] },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["CONNECTED", "CONFIGURED", "NEEDS_KEYS", "PAUSED"] },
+        "endpointOrHandle": { "type": "string" },
+        "autoSyncEnabled": { "type": "boolean" },
+        "webhookSecretHash": { "type": "string" },
+        "lastHeartbeatAtMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "platformKey",
+        "name",
+        "status",
+        "endpointOrHandle",
+        "autoSyncEnabled",
+        "webhookSecretHash",
+        "lastHeartbeatAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "EngagementEvent": {
+      "title": "EngagementEvent",
+      "description": "Analytics and command interaction log entry for dashboard telemetry.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "accountId": { "type": "string" },
+        "e164Number": { "type": "string" },
+        "commandTrigger": { "type": "string" },
+        "platform": { "type": "string" },
+        "promptPreview": { "type": "string" },
+        "responsePreview": { "type": "string" },
+        "latencyMs": { "type": "integer" },
+        "status": { "type": "string", "enum": ["DELIVERED", "PROCESSED", "BLOCKED", "FAILED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "accountId",
+        "e164Number",
+        "commandTrigger",
+        "platform",
+        "promptPreview",
+        "responsePreview",
+        "latencyMs",
+        "status",
+        "createdAt"
+      ]
+    },
+    "AdminAuditLog": {
+      "title": "AdminAuditLog",
+      "description": "Immutable owner administration audit trail entry.",
+      "type": "object",
+      "properties": {
+        "ownerUid": { "type": "string" },
+        "actionType": { "type": "string" },
+        "targetAccountId": { "type": "string" },
+        "targetLabel": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerUid",
+        "actionType",
+        "targetAccountId",
+        "targetLabel",
+        "details",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/OwnerPolicy" },
+      "description": "Per-owner global fleet administration policy."
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/ConnectedAccount" },
+      "description": "Linked WhatsApp personal accounts and group targets controlled by the owner."
+    },
+    "/users/{userId}/commands/{commandId}": {
+      "schema": { "$ref": "#/entities/BotCommand" },
+      "description": "Built-in and custom bot commands for AI search, sharing, and media downloads."
+    },
+    "/users/{userId}/mediaJobs/{jobId}": {
+      "schema": { "$ref": "#/entities/MediaJob" },
+      "description": "Music and video download and WhatsApp upload jobs."
+    },
+    "/users/{userId}/platforms/{platformId}": {
+      "schema": { "$ref": "#/entities/PlatformIntegration" },
+      "description": "Business operating platform and social channel integrations."
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": { "$ref": "#/entities/EngagementEvent" },
+      "description": "Real-time engagement and command execution analytics events."
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AdminAuditLog" },
+      "description": "Immutable owner administration audit trail."
+    }
+  }
+}
